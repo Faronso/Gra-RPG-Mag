@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tower of Necromancy</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#07050a;--panel:#0d0b12;--border:#2a1f35;--gold:#c9a84c;--text:#c0b09a;--dim:#5a4a3a;--red:#9b2335;--blue:#1a4a7a;}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;}
+  html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:'Crimson Text',serif;display:flex;flex-direction:column;align-items:center;overflow:hidden;position:fixed;}
+  .header{width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .hero-row{display:flex;align-items:center;gap:8px;}
+  .avatar{font-size:28px;filter:drop-shadow(0 0 6px #c9a84c99);animation:float 3s ease-in-out infinite;}
+  @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
+  .hero-details{display:flex;flex-direction:column;gap:3px;}
+  .hero-name{font-family:'Cinzel',serif;font-size:12px;color:var(--gold);letter-spacing:1px;}
+  .bars{display:flex;flex-direction:column;gap:3px;}
+  .bar-row{display:flex;align-items:center;gap:5px;}
+  .bar-lbl{font-size:9px;color:var(--dim);width:14px;letter-spacing:1px;}
+  .bar-track{width:65px;height:5px;background:#150f1e;border:1px solid var(--border);overflow:hidden;}
+  .bar-fill{height:100%;transition:width 0.4s;}
+  .bar-fill.hp{background:linear-gradient(90deg,#6b1a1a,var(--red));}
+  .bar-fill.mp{background:linear-gradient(90deg,#0f2d4a,var(--blue));}
+  .title-block{text-align:right;}
+  .game-title{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:2px;opacity:0.8;line-height:1.4;}
+  .game-sub{font-size:9px;color:var(--dim);letter-spacing:2px;}
+  .map-wrap{width:100%;padding:10px 10px 6px;flex-shrink:0;}
+  .map-grid{display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:3px;width:100%;aspect-ratio:1;}
+  .cell{aspect-ratio:1;position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;border:1px solid #1a1225;overflow:hidden;cursor:pointer;transition:filter 0.15s,border-color 0.15s;}
+  .t-grass{background:linear-gradient(135deg,#0f1a0f,#0a110a);}
+  .t-path{background:linear-gradient(135deg,#1a1508,#120f05);}
+  .t-village{background:linear-gradient(135deg,#1a1508,#201808);}
+  .t-castle{background:linear-gradient(135deg,#0c0e1a,#080a14);}
+  .t-tower{background:linear-gradient(135deg,#0a0510,#060308);}
+  .t-water{background:linear-gradient(135deg,#060f18,#040b12);}
+  .t-ruin{background:linear-gradient(135deg,#120808,#0a0505);}
+  .cell.fog{filter:brightness(0.2) saturate(0.2);pointer-events:none;}
+  .cell.visited{filter:brightness(0.65);}
+  .cell.current{border-color:var(--gold);box-shadow:inset 0 0 10px #c9a84c22,0 0 6px #c9a84c33;filter:brightness(1.1);}
+  .cell.reachable{border-color:#c9a84c55;}
+  .cell.reachable::after{content:'';position:absolute;inset:3px;border:1px solid #c9a84c33;animation:pulse 1.8s ease-in-out infinite;pointer-events:none;}
+  @keyframes pulse{0%,100%{opacity:0.2;}50%{opacity:0.8;}}
+  .cell-icon{font-size:clamp(18px,5.5vw,26px);position:relative;z-index:2;line-height:1;}
+  .cell-label{font-family:'Cinzel',serif;font-size:clamp(6px,1.8vw,9px);color:var(--dim);letter-spacing:0.5px;position:relative;z-index:2;margin-top:1px;}
+  .cell.current .cell-label{color:var(--gold);opacity:0.8;}
+  .player-dot{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 6px var(--gold);z-index:5;animation:blink 1.5s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+  .loc-bar{width:100%;padding:5px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  .loc-name{font-family:'Cinzel',serif;font-size:11px;color:var(--gold);letter-spacing:1px;}
+  .loc-coords{font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:2px;}
+  .log-wrap{width:100%;padding:0 10px;flex-shrink:0;}
+  .log-box{background:var(--panel);border:1px solid var(--border);border-top:1px solid #c9a84c1a;padding:7px 10px;}
+  .log-main{font-size:13px;color:var(--text);line-height:1.4;}
+  .log-sub{font-size:11px;color:var(--dim);font-style:italic;margin-top:1px;}
+  .battle-btn{display:none;width:100%;margin-top:8px;background:linear-gradient(135deg,#3a0a0a,#200505);border:1px solid var(--red);padding:11px;text-align:center;cursor:pointer;animation:danger-pulse 1.5s ease-in-out infinite;}
+  .battle-btn.visible{display:block;}
+  .battle-btn-text{font-family:'Cinzel',serif;font-size:14px;color:#e85555;letter-spacing:3px;}
+  .battle-btn-sub{font-size:10px;color:var(--dim);margin-top:2px;font-style:italic;}
+  @keyframes danger-pulse{0%,100%{border-color:#6b1a1a;}50%{border-color:#c0392b;box-shadow:0 0 10px #c0392b33;}}
+  .controls{width:100%;padding:6px 14px 10px;display:flex;align-items:flex-end;justify-content:space-between;flex-shrink:0;flex:1;}
+  .dpad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:3px;}
+  .db{background:#0f0c18;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--dim);cursor:pointer;border-radius:3px;transition:background 0.1s,color 0.1s,border-color 0.1s;}
+  .db:active,.db.pressed{background:#1e1830;border-color:var(--gold);color:var(--gold);}
+  .db.center{background:#09070f;border-color:#180f25;cursor:default;font-size:11px;color:#2a1f38;font-family:'Cinzel',serif;}
+  .db.blank{background:transparent;border-color:transparent;pointer-events:none;}
+  .legend{display:flex;flex-direction:column;gap:4px;}
+  .leg-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim);}
+  .leg-icon{font-size:14px;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="hero-row">
+    <div class="avatar">🧙</div>
+    <div class="hero-details">
+      <div class="hero-name">Aelindra</div>
+      <div class="bars">
+        <div class="bar-row"><span class="bar-lbl">HP</span><div class="bar-track"><div class="bar-fill hp" style="width:100%"></div></div></div>
+        <div class="bar-row"><span class="bar-lbl">MP</span><div class="bar-track"><div class="bar-fill mp" style="width:100%"></div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="title-block">
+    <div class="game-title">TOWER OF<br>NECROMANCY</div>
+    <div class="game-sub">MAPA GŁÓWNA</div>
+  </div>
+</div>
+<div class="map-wrap"><div class="map-grid" id="grid"></div></div>
+<div class="loc-bar">
+  <div class="loc-name" id="loc-name">Wioska</div>
+  <div class="loc-coords" id="loc-coords">X:2 Y:4</div>
+</div>
+<div class="log-wrap">
+  <div class="log-box">
+    <div class="log-main" id="log-main">Aelindra wyrusza w mroczną krainę...</div>
+    <div class="log-sub" id="log-sub">Cel: Wieża Nekromantów na północy.</div>
+    <div class="battle-btn" id="battle-btn" onclick="gotoBattle()" ontouchstart="gotoBattle()">
+      <div class="battle-btn-text">⚔️ WALCZ!</div>
+      <div class="battle-btn-sub">Wrogowie czają się w pobliżu...</div>
+    </div>
+  </div>
+</div>
+<div class="controls">
+  <div class="dpad">
+    <div class="db blank"></div>
+    <div class="db" id="db-up" ontouchstart="tryMove(-1,0);flash('up')" onclick="tryMove(-1,0)">▲</div>
+    <div class="db blank"></div>
+    <div class="db" id="db-left" ontouchstart="tryMove(0,-1);flash('left')" onclick="tryMove(0,-1)">◀</div>
+    <div class="db center">✦</div>
+    <div class="db" id="db-right" ontouchstart="tryMove(0,1);flash('right')" onclick="tryMove(0,1)">▶</div>
+    <div class="db blank"></div>
+    <div class="db" id="db-down" ontouchstart="tryMove(1,0);flash('down')" onclick="tryMove(1,0)">▼</div>
+    <div class="db blank"></div>
+  </div>
+  <div class="legend">
+    <div class="leg-item"><span class="leg-icon">🏘️</span> Wioska</div>
+    <div class="leg-item"><span class="leg-icon">🏰</span> Zamek</div>
+    <div class="leg-item"><span class="leg-icon">🗼</span> Wieża Zła</div>
+    <div class="leg-item"><span class="leg-icon">💀</span> Ruiny</div>
+    <div class="leg-item"><span class="leg-icon">🌲</span> Las</div>
+    <div class="leg-item"><span class="leg-icon">🌊</span> Rzeka</div>
+  </div>
+</div>
+<script>
+const MAP=[
+  [{t:'tower',icon:'🗼',label:'Wieża',desc:'Wieża Nekromantów. Lodowaty chłód emanuje z kamieni.',danger:true},{t:'ruin',icon:'💀',label:'Ruiny',desc:'Szczątki dawnej osady. Duchy unoszą się w powietrzu.',danger:true},{t:'water',icon:'🌊',label:'Rzeka',desc:'Martwa rzeka. Woda czarna jak smoła.',danger:false},{t:'ruin',icon:'💀',label:'Ruiny',desc:'Kolejne ruiny pochłonięte przez mrok.',danger:true},{t:'grass',icon:'🌲',label:'Las',desc:'Mroczny las. Drzewa bez liści.',danger:true}],
+  [{t:'grass',icon:'🌲',label:'Las',desc:'Martwy las otacza wieżę ze wszystkich stron.',danger:true},{t:'ruin',icon:'💀',label:'Ruiny',desc:'Tu niegdyś stał kościół. Teraz tylko kamień i cień.',danger:true},{t:'path',icon:'🛤️',label:'Droga',desc:'Stara droga. Kiedyś prowadziła do wieży.',danger:false},{t:'grass',icon:'🌲',label:'Las',desc:'Gęstwina. Coś się porusza między drzewami.',danger:true},{t:'water',icon:'🌊',label:'Bagno',desc:'Bagniste trzęsawisko.',danger:false}],
+  [{t:'water',icon:'🌊',label:'Rzeka',desc:'Przekraczasz martwy strumień.',danger:false},{t:'path',icon:'🛤️',label:'Droga',desc:'Skrzyżowanie dróg. Słup bez napisów.',danger:false},{t:'ruin',icon:'💀',label:'Ruiny',desc:'Ruiny obozu wojskowego.',danger:true},{t:'path',icon:'🛤️',label:'Droga',desc:'Droga prowadzi na południe.',danger:false},{t:'grass',icon:'🌲',label:'Las',desc:'Skraj lasu. Tutaj jeszcze rośnie trawa.',danger:true}],
+  [{t:'grass',icon:'🌲',label:'Las',desc:'Stary las. Spokojniejszy niż reszta.',danger:true},{t:'castle',icon:'🏰',label:'Zamek',desc:'Zamek Strażników. Ostatnia fortyfikacja.',danger:false},{t:'path',icon:'🛤️',label:'Droga',desc:'Gościniec. Kiedyś tętnił życiem kupieckim.',danger:false},{t:'ruin',icon:'💀',label:'Ruiny',desc:'Spalone domy. Zapach popiołu w powietrzu.',danger:true},{t:'grass',icon:'🌲',label:'Las',desc:'Wschodni las. Tu słychać ptaki.',danger:false}],
+  [{t:'grass',icon:'🌲',label:'Las',desc:'Obrzeża krainy. Tu zaczęła się twoja podróż.',danger:false},{t:'path',icon:'🛤️',label:'Droga',desc:'Droga do wioski. Czujesz się bezpieczniej.',danger:false},{t:'village',icon:'🏘️',label:'Wioska',desc:'Ostatni bastion światła przed ciemnością.',danger:false},{t:'path',icon:'🛤️',label:'Droga',desc:'Droga na wschód. Prowadzi do cmentarza.',danger:false},{t:'ruin',icon:'💀',label:'Ruiny',desc:'Zniszczona karczma. Wszystko przepadło.',danger:true}],
+];
+let pos={r:4,c:2},visited=new Set(),prevLog='Cel: Wieża Nekromantów na północy.';
+function key(r,c){return r+','+c;}
+function reveal(r,c){for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){const nr=r+dr,nc=c+dc;if(nr>=0&&nr<5&&nc>=0&&nc<5)visited.add(key(nr,nc));}}
+function render(){
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+    const cell=MAP[r][c],isPlayer=pos.r===r&&pos.c===c,isSeen=visited.has(key(r,c)),isAdj=!isPlayer&&Math.abs(pos.r-r)<=1&&Math.abs(pos.c-c)<=1&&isSeen;
+    const div=document.createElement('div');
+    div.className='cell t-'+cell.t+' '+(!isSeen?'fog':isPlayer?'current':isAdj?'reachable':'visited');
+    div.innerHTML='<span class="cell-icon">'+cell.icon+'</span><span class="cell-label">'+cell.label+'</span>'+(isPlayer?'<div class="player-dot"></div>':'');
+    if(isAdj){div.addEventListener('click',()=>moveTo(r,c));div.addEventListener('touchstart',(e)=>{e.preventDefault();moveTo(r,c);},{passive:false});}
+    grid.appendChild(div);
+  }
+  const cell=MAP[pos.r][pos.c];
+  document.getElementById('loc-name').textContent=cell.label+(cell.danger?' ⚠️':'');
+  document.getElementById('loc-coords').textContent='X:'+pos.c+' Y:'+pos.r;
+  const btn=document.getElementById('battle-btn');
+  cell.danger?btn.classList.add('visible'):btn.classList.remove('visible');
+}
+function setLog(main,sub){document.getElementById('log-main').textContent=main;document.getElementById('log-sub').textContent=sub||'';}
+function tryMove(dr,dc){
+  const nr=pos.r+dr,nc=pos.c+dc;
+  if(nr<0||nr>=5||nc<0||nc>=5){setLog('Nie możesz tam iść...',prevLog);return;}
+  if(!visited.has(key(nr,nc))){setLog('Tam leży nieznany teren...',prevLog);return;}
+  moveTo(nr,nc);
+}
+function moveTo(nr,nc){pos={r:nr,c:nc};reveal(nr,nc);const cell=MAP[nr][nc],old=prevLog;prevLog=cell.desc;setLog(cell.desc,old);render();}
+function gotoBattle(){window.location.href='battle.html';}
+document.addEventListener('keydown',e=>{
+  const m={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1],w:[-1,0],s:[1,0],a:[0,-1],d:[0,1]};
+  const dir=m[e.key];if(!dir)return;e.preventDefault();
+  const dmap={'-1,0':'up','1,0':'down','0,-1':'left','0,1':'right'};
+  flash(dmap[dir.join(',')]);tryMove(dir[0],dir[1]);
+});
+function flash(id){const btn=document.getElementById('db-'+id);if(!btn)return;btn.classList.add('pressed');setTimeout(()=>btn.classList.remove('pressed'),150);}
+reveal(pos.r,pos.c);render();
+</script>
+</body>
+</html>
